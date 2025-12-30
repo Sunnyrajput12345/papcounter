@@ -43,11 +43,21 @@ const IlluminatiWatermark = () => (
   </div>
 );
 
+const ErrorMessage = ({ show }: { show: boolean }) => {
+  if (!show) return null;
+  return (
+    <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">
+      This field is required
+    </p>
+  );
+};
+
 const App: React.FC = () => {
   const [view, setView] = useState<'FORM' | 'CELEBRATING' | 'RESULT'>('FORM');
   const [showSharePopup, setShowSharePopup] = useState(false);
   const fullResultRef = useRef<HTMLDivElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   
   const [data, setData] = useState<Partial<UserData>>({
     age: undefined,
@@ -83,7 +93,10 @@ const App: React.FC = () => {
   );
 
   const handleSubmit = () => {
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      setShowErrors(true);
+      return;
+    }
     const res = calculateResults(data as UserData);
     setResults(res);
     setView('CELEBRATING');
@@ -99,14 +112,11 @@ const App: React.FC = () => {
     
     setIsCapturing(true);
     
-    // Stability delay for rendering with new branding
     await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
-      // Measure dimensions after branding is rendered
       const width = element.offsetWidth;
       const height = element.offsetHeight;
-      
       const pixelRatio = Math.max(window.devicePixelRatio || 1, 2);
 
       const dataUrl = await toPng(element, { 
@@ -152,6 +162,10 @@ const App: React.FC = () => {
     if (count >= 800) return "Certified Danger to Humanity 😈";
     if (count >= 400) return "Elite Soldier of Degeneracy 🫡";
     return "You still have hope, warrior 🛡️";
+  };
+
+  const getFieldHighlight = (isMissing: boolean) => {
+    return isMissing && showErrors ? 'border-red-500 ring-4 ring-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-black';
   };
 
   if (view === 'CELEBRATING') {
@@ -337,7 +351,6 @@ const App: React.FC = () => {
 
               <p className="text-[10px] text-gray-200 font-black uppercase tracking-widest mt-8 opacity-30 no-export">PAPCOUNTER.XYZ</p>
 
-              {/* EXPORT-ONLY BRANDING FOOTER */}
               <div className={`mt-10 flex-col items-center w-full ${isCapturing ? 'flex' : 'hidden'}`}>
                 <div className="text-5xl font-black uppercase tracking-tighter leading-none mb-2">
                   <span className="text-pink-500">PAP</span> <span className="text-black">COUNTER</span>
@@ -408,19 +421,22 @@ const App: React.FC = () => {
               This calculator is built for fun, curiosity and chaos — enjoy responsibly 😈
             </p>
             <section className="space-y-8">
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => setData({...data, gender: 'Boys'})}
-                  className={`py-4 rounded-[25px] font-black transition-all text-md shadow-sm border-2 ${data.gender === 'Boys' ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-400 border-gray-100'}`}
-                >
-                  BOYS 👦
-                </button>
-                <button 
-                  onClick={() => setData({...data, gender: 'Girls'})}
-                  className={`py-4 rounded-[25px] font-black transition-all text-md shadow-sm border-2 ${data.gender === 'Girls' ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-400 border-gray-100'}`}
-                >
-                  GIRLS 👧
-                </button>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => { setData({...data, gender: 'Boys'}); setShowErrors(false); }}
+                    className={`py-4 rounded-[25px] font-black transition-all text-md shadow-sm border-2 ${data.gender === 'Boys' ? 'bg-black text-white border-black' : (data.gender === undefined && showErrors ? 'border-red-500 ring-2 ring-red-500/10' : 'bg-gray-50 text-gray-400 border-gray-100')}`}
+                  >
+                    BOYS 👦
+                  </button>
+                  <button 
+                    onClick={() => { setData({...data, gender: 'Girls'}); setShowErrors(false); }}
+                    className={`py-4 rounded-[25px] font-black transition-all text-md shadow-sm border-2 ${data.gender === 'Girls' ? 'bg-black text-white border-black' : (data.gender === undefined && showErrors ? 'border-red-500 ring-2 ring-red-500/10' : 'bg-gray-50 text-gray-400 border-gray-100')}`}
+                  >
+                    GIRLS 👧
+                  </button>
+                </div>
+                <ErrorMessage show={data.gender === undefined && showErrors} />
               </div>
 
               <div className="space-y-3">
@@ -428,106 +444,120 @@ const App: React.FC = () => {
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">How old are you right now?</label>
                   <span className="text-xl font-black">{data.age ?? '--'}</span>
                 </div>
-                <input 
-                  type="range" min="16" max="50" step="1" 
-                  value={data.age ?? 16}
-                  onChange={(e) => setData({...data, age: parseInt(e.target.value)})}
-                  className="w-full accent-black h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
-                />
+                <div className={`p-2 rounded-2xl transition-all ${data.age === undefined && showErrors ? 'ring-2 ring-red-500/20' : ''}`}>
+                  <input 
+                    type="range" min="16" max="50" step="1" 
+                    value={data.age ?? 16}
+                    onChange={(e) => { setData({...data, age: parseInt(e.target.value)}); setShowErrors(false); }}
+                    className="w-full accent-black h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                <ErrorMessage show={data.age === undefined && showErrors} />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest text-left block leading-tight mb-1">When did you first start masturbating?</label>
                 <select 
                   value={data.startingAgeRange ?? ""}
-                  onChange={(e) => setData({...data, startingAgeRange: e.target.value})}
-                  className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
+                  onChange={(e) => { setData({...data, startingAgeRange: e.target.value}); setShowErrors(false); }}
+                  className={`w-full bg-gray-50 border-2 p-3 rounded-2xl font-black text-md appearance-none transition-all ${getFieldHighlight(data.startingAgeRange === undefined)}`}
                 >
                   <option value="" disabled>Select...</option>
                   {['10–11', '12–13', '14–15', '16+'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
+                <ErrorMessage show={data.startingAgeRange === undefined && showErrors} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-tight block mb-1">At what age did your habit become MOST frequent?</label>
                   <select 
                     value={data.peakStartAge ?? ""}
-                    onChange={(e) => setData({...data, peakStartAge: parseInt(e.target.value)})}
-                    className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
+                    onChange={(e) => { setData({...data, peakStartAge: parseInt(e.target.value)}); setShowErrors(false); }}
+                    className={`w-full bg-gray-50 border-2 p-3 rounded-2xl font-black text-md appearance-none transition-all ${getFieldHighlight(data.peakStartAge === undefined)}`}
                   >
                     <option value="" disabled>Select...</option>
                     {[12, 13, 14, 15, 16, 17, 18, 19, 20].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
+                  <ErrorMessage show={data.peakStartAge === undefined && showErrors} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-tight block mb-1">At what age did your peak habit phase end?</label>
                   <select 
                     value={data.peakEndAge ?? ""}
-                    onChange={(e) => setData({...data, peakEndAge: parseInt(e.target.value)})}
-                    className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
+                    onChange={(e) => { setData({...data, peakEndAge: parseInt(e.target.value)}); setShowErrors(false); }}
+                    className={`w-full bg-gray-50 border-2 p-3 rounded-2xl font-black text-md appearance-none transition-all ${getFieldHighlight(data.peakEndAge === undefined)}`}
                   >
                     <option value="" disabled>Select...</option>
                     {[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
+                  <ErrorMessage show={data.peakEndAge === undefined && showErrors} />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-tight block mb-1">During your worst phase, how many times per week did you masturbate on average?</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-tight block mb-1 text-left">During your worst phase, how many times per week did you masturbate on average?</label>
+                <div className={`grid grid-cols-2 gap-2 p-1 rounded-2xl transition-all ${data.peakFreqLevel === undefined && showErrors ? 'ring-2 ring-red-500/20' : ''}`}>
                   {['2–3 times', '4–6 times', '7–10 times', '10+ (beast mode 😭)'].map(v => (
                     <button
                       key={v}
-                      onClick={() => setData({...data, peakFreqLevel: v})}
-                      className={`p-3 rounded-xl font-bold border-2 text-xs transition-all ${data.peakFreqLevel === v ? 'bg-black text-white border-black' : 'bg-white text-gray-400 border-gray-100'}`}
+                      onClick={() => { setData({...data, peakFreqLevel: v}); setShowErrors(false); }}
+                      className={`p-3 rounded-xl font-bold border-2 text-xs transition-all ${data.peakFreqLevel === v ? 'bg-black text-white border-black' : (data.peakFreqLevel === undefined && showErrors ? 'border-red-500' : 'bg-white text-gray-400 border-gray-100')}`}
                     >
                       {v}
                     </button>
                   ))}
                 </div>
+                <ErrorMessage show={data.peakFreqLevel === undefined && showErrors} />
               </div>
 
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center text-left">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">How many times per week do you currently masturbate?</label>
                   <span className="text-xl font-black">{data.currentFreq ?? '--'}</span>
                 </div>
-                <input 
-                  type="range" min="0" max="10" step="1" 
-                  value={data.currentFreq ?? 0}
-                  onChange={(e) => setData({...data, currentFreq: parseInt(e.target.value)})}
-                  className="w-full accent-pink-500 h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
-                />
+                <div className={`p-2 rounded-2xl transition-all ${data.currentFreq === undefined && showErrors ? 'ring-2 ring-red-500/20' : ''}`}>
+                  <input 
+                    type="range" min="0" max="10" step="1" 
+                    value={data.currentFreq ?? 0}
+                    onChange={(e) => { setData({...data, currentFreq: parseInt(e.target.value)}); setShowErrors(false); }}
+                    className="w-full accent-pink-500 h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                <ErrorMessage show={data.currentFreq === undefined && showErrors} />
               </div>
 
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center text-left">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">What is your longest NoFap streak?</label>
                   <span className="text-xl font-black">{data.longestStreak ?? '--'}</span>
                 </div>
-                <input 
-                  type="range" min="0" max="365" step="1" 
-                  value={data.longestStreak ?? 0}
-                  onChange={(e) => setData({...data, longestStreak: parseInt(e.target.value)})}
-                  className="w-full accent-black h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
-                />
+                <div className={`p-2 rounded-2xl transition-all ${data.longestStreak === undefined && showErrors ? 'ring-2 ring-red-500/20' : ''}`}>
+                  <input 
+                    type="range" min="0" max="365" step="1" 
+                    value={data.longestStreak ?? 0}
+                    onChange={(e) => { setData({...data, longestStreak: parseInt(e.target.value)}); setShowErrors(false); }}
+                    className="w-full accent-black h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                <ErrorMessage show={data.longestStreak === undefined && showErrors} />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Total time spent on NoFap breaks throughout your life</label>
                 <select 
                   value={data.noFapBreaksRange ?? ""}
-                  onChange={(e) => setData({...data, noFapBreaksRange: e.target.value})}
-                  className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
+                  onChange={(e) => { setData({...data, noFapBreaksRange: e.target.value}); setShowErrors(false); }}
+                  className={`w-full bg-gray-50 border-2 p-3 rounded-2xl font-black text-md appearance-none transition-all ${getFieldHighlight(data.noFapBreaksRange === undefined)}`}
                 >
                   <option value="" disabled>Select...</option>
                   {['Hardly any breaks (0–50 days)', 'Few breaks (50–150 days)', 'Quite a lot (150–300 days)', 'Legendary Monk (300+ days)'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
+                <ErrorMessage show={data.noFapBreaksRange === undefined && showErrors} />
               </div>
 
               <div className="space-y-4 bg-gray-50 p-6 rounded-[35px] border-2 border-black">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between text-left">
                   <label className="text-xs font-black text-gray-800 uppercase tracking-widest leading-tight">Total days you went full demon mode 😈</label>
                   <button 
                     onClick={() => setData({...data, multiDayActive: !data.multiDayActive})}
@@ -538,7 +568,7 @@ const App: React.FC = () => {
                 </div>
                 {data.multiDayActive && (
                   <div className="space-y-3 pt-3 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center text-left">
                       <label className="text-[10px] font-black text-gray-400">0 to 500 days</label>
                       <span className="text-md font-black">{data.multiDayCount} Days</span>
                     </div>
@@ -552,12 +582,12 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Total time in a relationship</label>
                 <select 
                   value={data.relationshipImpactMonths ?? ""}
-                  onChange={(e) => setData({...data, relationshipImpactMonths: parseInt(e.target.value)})}
-                  className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
+                  onChange={(e) => { setData({...data, relationshipImpactMonths: parseInt(e.target.value)}); setShowErrors(false); }}
+                  className={`w-full bg-gray-50 border-2 p-3 rounded-2xl font-black text-md appearance-none transition-all ${getFieldHighlight(data.relationshipImpactMonths === undefined)}`}
                 >
                   <option value="" disabled>Select...</option>
                   <option value="0">Never been in relationship 😭</option>
@@ -565,35 +595,46 @@ const App: React.FC = () => {
                   <option value="18">1–2 years total</option>
                   <option value="36">3+ years total</option>
                 </select>
+                <ErrorMessage show={data.relationshipImpactMonths === undefined && showErrors} />
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 text-left">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Stress Phase Spikes</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className={`grid grid-cols-2 gap-2 p-1 rounded-2xl transition-all ${data.stressPhaseBoosterLevel === undefined && showErrors ? 'ring-2 ring-red-500/20' : ''}`}>
                   {['Nope, normal life', 'Few stress phases', 'Many stress phases', 'Bro I lived in chaos 💀'].map(v => (
                     <button
                       key={v}
-                      onClick={() => setData({...data, stressPhaseBoosterLevel: v})}
-                      className={`p-3 rounded-xl font-bold border-2 text-[10px] leading-tight transition-all ${data.stressPhaseBoosterLevel === v ? 'bg-black text-white border-black' : 'bg-white text-gray-400 border-gray-100'}`}
+                      onClick={() => { setData({...data, stressPhaseBoosterLevel: v}); setShowErrors(false); }}
+                      className={`p-3 rounded-xl font-bold border-2 text-[10px] leading-tight transition-all ${data.stressPhaseBoosterLevel === v ? 'bg-black text-white border-black' : (data.stressPhaseBoosterLevel === undefined && showErrors ? 'border-red-500' : 'bg-white text-gray-400 border-gray-100')}`}
                     >
                       {v}
                     </button>
                   ))}
                 </div>
+                <ErrorMessage show={data.stressPhaseBoosterLevel === undefined && showErrors} />
               </div>
             </section>
 
-            <div className="pt-4 text-center">
+            <div className="pt-4 text-center relative">
+              {showErrors && !isFormValid && (
+                <div className="absolute -top-12 left-0 right-0 z-20">
+                  <div className="bg-red-500 text-white text-[10px] font-black py-2 px-4 rounded-full shadow-lg inline-block animate-bounce uppercase tracking-widest">
+                    Please complete all required fields ⚠️
+                  </div>
+                </div>
+              )}
+              
               <button 
                 onClick={handleSubmit}
-                disabled={!isFormValid}
-                className={`w-full bg-black text-white font-black py-7 rounded-[35px] shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all tracking-tight text-2xl uppercase ${!isFormValid ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
+                className={`w-full bg-black text-white font-black py-7 rounded-[35px] shadow-2xl transition-all tracking-tight text-2xl uppercase ${!isFormValid ? 'opacity-50 cursor-not-allowed hover:scale-100' : 'hover:scale-[1.01] active:scale-[0.99]'}`}
               >
                 GENERATE MY GRIND REPORT 🤝
               </button>
+              
               <p className="text-[11px] font-bold text-gray-400 mt-2 italic uppercase tracking-wider">
                 Fill the form for more accurate answer
               </p>
+              
               <p className="text-center text-gray-500 text-xs font-bold mt-4">
                 Get up to 90%+ accurate estimate based on your real-life habit data 📊
               </p>
