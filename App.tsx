@@ -49,27 +49,42 @@ const App: React.FC = () => {
   const fullResultRef = useRef<HTMLDivElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   
-  const [data, setData] = useState<UserData>({
-    age: 19,
-    startingAgeRange: '12–13',
-    peakStartAge: 13,
-    peakEndAge: 18,
-    peakFreqLevel: '4–6 times',
-    currentFreq: 3,
-    noFapBreaksRange: 'Few breaks (50–150 days)',
-    multiDayActive: true,
-    multiDayCount: 50,
-    relationshipImpactMonths: 6,
-    stressPhaseBoosterLevel: 'Few stress phases',
-    gender: 'Boys',
+  const [data, setData] = useState<Partial<UserData>>({
+    age: undefined,
+    startingAgeRange: undefined,
+    peakStartAge: undefined,
+    peakEndAge: undefined,
+    peakFreqLevel: undefined,
+    currentFreq: undefined,
+    noFapBreaksRange: undefined,
+    multiDayActive: false,
+    multiDayCount: 0,
+    relationshipImpactMonths: undefined,
+    stressPhaseBoosterLevel: undefined,
+    gender: undefined,
     fantasyStar: 'Innocent 👀',
-    longestStreak: 14
+    longestStreak: undefined
   });
   
   const [results, setResults] = useState<CalculationResult | null>(null);
 
+  const isFormValid = !!(
+    data.age !== undefined &&
+    data.gender !== undefined &&
+    data.startingAgeRange !== undefined &&
+    data.peakStartAge !== undefined &&
+    data.peakEndAge !== undefined &&
+    data.peakFreqLevel !== undefined &&
+    data.currentFreq !== undefined &&
+    data.noFapBreaksRange !== undefined &&
+    data.relationshipImpactMonths !== undefined &&
+    data.stressPhaseBoosterLevel !== undefined &&
+    data.longestStreak !== undefined
+  );
+
   const handleSubmit = () => {
-    const res = calculateResults(data);
+    if (!isFormValid) return;
+    const res = calculateResults(data as UserData);
     setResults(res);
     setView('CELEBRATING');
     setTimeout(() => {
@@ -411,11 +426,11 @@ const App: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">How old are you right now?</label>
-                  <span className="text-xl font-black">{data.age}</span>
+                  <span className="text-xl font-black">{data.age ?? '--'}</span>
                 </div>
                 <input 
                   type="range" min="16" max="50" step="1" 
-                  value={data.age}
+                  value={data.age ?? 16}
                   onChange={(e) => setData({...data, age: parseInt(e.target.value)})}
                   className="w-full accent-black h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
                 />
@@ -424,10 +439,11 @@ const App: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest text-left block leading-tight mb-1">When did you first start masturbating?</label>
                 <select 
-                  value={data.startingAgeRange}
+                  value={data.startingAgeRange ?? ""}
                   onChange={(e) => setData({...data, startingAgeRange: e.target.value})}
                   className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
                 >
+                  <option value="" disabled>Select...</option>
                   {['10–11', '12–13', '14–15', '16+'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
@@ -436,20 +452,22 @@ const App: React.FC = () => {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-tight block mb-1">At what age did your habit become MOST frequent?</label>
                   <select 
-                    value={data.peakStartAge}
+                    value={data.peakStartAge ?? ""}
                     onChange={(e) => setData({...data, peakStartAge: parseInt(e.target.value)})}
                     className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
                   >
+                    <option value="" disabled>Select...</option>
                     {[12, 13, 14, 15, 16, 17, 18, 19, 20].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest leading-tight block mb-1">At what age did your peak habit phase end?</label>
                   <select 
-                    value={data.peakEndAge}
+                    value={data.peakEndAge ?? ""}
                     onChange={(e) => setData({...data, peakEndAge: parseInt(e.target.value)})}
                     className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
                   >
+                    <option value="" disabled>Select...</option>
                     {[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
@@ -473,11 +491,11 @@ const App: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">How many times per week do you currently masturbate?</label>
-                  <span className="text-xl font-black">{data.currentFreq}</span>
+                  <span className="text-xl font-black">{data.currentFreq ?? '--'}</span>
                 </div>
                 <input 
                   type="range" min="0" max="10" step="1" 
-                  value={data.currentFreq}
+                  value={data.currentFreq ?? 0}
                   onChange={(e) => setData({...data, currentFreq: parseInt(e.target.value)})}
                   className="w-full accent-pink-500 h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
                 />
@@ -486,11 +504,11 @@ const App: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">What is your longest NoFap streak?</label>
-                  <span className="text-xl font-black">{data.longestStreak}</span>
+                  <span className="text-xl font-black">{data.longestStreak ?? '--'}</span>
                 </div>
                 <input 
                   type="range" min="0" max="365" step="1" 
-                  value={data.longestStreak}
+                  value={data.longestStreak ?? 0}
                   onChange={(e) => setData({...data, longestStreak: parseInt(e.target.value)})}
                   className="w-full accent-black h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer"
                 />
@@ -499,10 +517,11 @@ const App: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Total time spent on NoFap breaks throughout your life</label>
                 <select 
-                  value={data.noFapBreaksRange}
+                  value={data.noFapBreaksRange ?? ""}
                   onChange={(e) => setData({...data, noFapBreaksRange: e.target.value})}
                   className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
                 >
+                  <option value="" disabled>Select...</option>
                   {['Hardly any breaks (0–50 days)', 'Few breaks (50–150 days)', 'Quite a lot (150–300 days)', 'Legendary Monk (300+ days)'].map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
@@ -536,10 +555,11 @@ const App: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Total time in a relationship</label>
                 <select 
-                  value={data.relationshipImpactMonths}
+                  value={data.relationshipImpactMonths ?? ""}
                   onChange={(e) => setData({...data, relationshipImpactMonths: parseInt(e.target.value)})}
                   className="w-full bg-gray-50 border-2 border-black p-3 rounded-2xl font-black text-md appearance-none"
                 >
+                  <option value="" disabled>Select...</option>
                   <option value="0">Never been in relationship 😭</option>
                   <option value="6">A few months total</option>
                   <option value="18">1–2 years total</option>
@@ -563,13 +583,17 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            <div className="pt-4">
+            <div className="pt-4 text-center">
               <button 
                 onClick={handleSubmit}
-                className="w-full bg-black text-white font-black py-7 rounded-[35px] shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all tracking-tight text-2xl uppercase"
+                disabled={!isFormValid}
+                className={`w-full bg-black text-white font-black py-7 rounded-[35px] shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all tracking-tight text-2xl uppercase ${!isFormValid ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
               >
                 GENERATE MY GRIND REPORT 🤝
               </button>
+              <p className="text-[11px] font-bold text-gray-400 mt-2 italic uppercase tracking-wider">
+                Fill the form for more accurate answer
+              </p>
               <p className="text-center text-gray-500 text-xs font-bold mt-4">
                 Get up to 90%+ accurate estimate based on your real-life habit data 📊
               </p>
