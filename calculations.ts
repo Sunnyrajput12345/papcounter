@@ -1,4 +1,3 @@
-
 import { UserData, CalculationResult } from '../types';
 
 const QUOTES_LOW = [
@@ -40,113 +39,153 @@ const QUOTES_HIGH = [
   "Legendary status. Not for the right reasons, but still legendary. 🤴"
 ];
 
+/**
+ * Deterministic pseudo-random jitter based on input data.
+ * Adds 0% to 3% variation for realism without being completely random on re-submits with same data.
+ */
+const getRealismJitter = (data: UserData): number => {
+  const seed = `${data.age}-${data.gender}-${data.startingAgeRange}-${data.currentFreq}-${data.longestStreak}-${data.peakFreqLevel}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  // Returns a value between 1.00 and 1.03
+  return 1 + (Math.abs(hash % 31) / 1000);
+};
+
 export const calculateResults = (data: UserData): CalculationResult => {
+  // Fresh calculation triggered
+  console.debug("[PapCounter] Initializing dynamic recalculation for:", data.age, data.gender);
+
   // 1. Determine Starting Age
   const startingAgeMap: Record<string, number> = {
-    '10–11': 10.5,
-    '12–13': 12.5,
-    '14–15': 14.5,
-    '16+': 17
+    '10–11': 10.7,
+    '12–13': 12.8,
+    '14–15': 14.6,
+    '16+': 17.2
   };
-  const startingAge = startingAgeMap[data.startingAgeRange] || 13;
+  const startingAge = startingAgeMap[data.startingAgeRange] || 13.5;
 
-  // 2. Determine Frequencies (Sessions per week)
+  // 2. Frequency Logic (Sessions Per Week)
   const peakFreqMap: Record<string, number> = {
-    '2–3 times': 2.5,
-    '4–6 times': 5,
-    '7–10 times': 8.5,
-    '10+ (beast mode 😭)': 13
+    '2–3 times': 2.6,
+    '4–6 times': 5.2,
+    '7–10 times': 8.8,
+    '10+ (beast mode 😭)': 13.7
   };
-  const peakFreq = peakFreqMap[data.peakFreqLevel] || 5;
+  const peakFreq = peakFreqMap[data.peakFreqLevel] || 5.0;
   const currentFreq = data.currentFreq;
 
-  // 3. Durations
-  const totalActiveYears = Math.max(0, data.age - startingAge);
-  const peakDuration = Math.min(totalActiveYears, Math.max(0, data.peakEndAge - data.peakStartAge));
+  // 3. Durations (Years)
+  const totalActiveYears = Math.max(0.2, data.age - startingAge);
+  // Define peak duration based on the window between peakStart and peakEnd
+  let peakDuration = Math.max(0, data.peakEndAge - data.peakStartAge);
+  // Constrain peak to be no more than the actual total years active
+  peakDuration = Math.min(totalActiveYears, peakDuration);
   const normalDuration = Math.max(0, totalActiveYears - peakDuration);
 
-  // 4. Base Counts
-  const peakCount = peakDuration * 52 * peakFreq;
-  const normalCount = normalDuration * 52 * currentFreq;
+  // 4. Base Calculation (Weeks per year roughly 52.14)
+  const WEEKS_PER_YEAR = 52.143;
+  const peakCount = peakDuration * WEEKS_PER_YEAR * peakFreq;
+  const normalCount = normalDuration * WEEKS_PER_YEAR * currentFreq;
 
-  // 5. Multi-Day "Demon Mode" Additions
-  // Assume each demon mode day adds ~2.5 extra sessions on average
-  const multiAdditions = data.multiDayActive ? data.multiDayCount * 2.5 : 0;
+  // 5. Additive Modifiers
+  // Demon mode addition (Multi-day sessions)
+  const multiAdditions = data.multiDayActive ? (data.multiDayCount * 2.3) : 0;
 
-  // 6. Stress Boosters
-  // Map level to extra sessions per week for a fraction of the active time
-  const stressMultiplierMap: Record<string, number> = {
-    'Nope, normal life': 0,
-    'Few stress phases': 0.1, // 10% of time boosted
-    'Many stress phases': 0.2, // 20% of time boosted
-    'Bro I lived in chaos 💀': 0.35 // 35% of time boosted
+  // Stress Phase Booster (Multiplies total density)
+  const stressMultipliers: Record<string, number> = {
+    'Nope, normal life': 1.0,
+    'Few stress phases': 1.12,
+    'Many stress phases': 1.24,
+    'Bro I lived in chaos 💀': 1.42
   };
-  const stressImpact = (peakCount + normalCount) * (stressMultiplierMap[data.stressPhaseBoosterLevel] || 0);
+  const stressFactor = stressMultipliers[data.stressPhaseBoosterLevel] || 1.0;
 
-  // 7. Deductions
-  // Relationship Impact: Assume 40% reduction in solo sessions during relationship time
-  const relationshipWeeks = (data.relationshipImpactMonths / 12) * 52;
-  const avgFreq = (peakFreq + currentFreq) / 2;
-  const relationshipDeduction = relationshipWeeks * avgFreq * 0.4;
+  // 6. Subtractive Modifiers (Deductions for discipline and breaks)
+  // Relationship deduction (Assuming ~45% reduction in solo activity during relationship months)
+  const relationshipWeeks = (data.relationshipImpactMonths || 0) * 4.33;
+  const relDeduction = relationshipWeeks * currentFreq * 0.45;
 
-  // NoFap Breaks
-  const noFapDaysMap: Record<string, number> = {
-    'Hardly any breaks (0–50 days)': 25,
+  // NoFap breaks deduction
+  const breakDaysMap: Record<string, number> = {
+    'Hardly any breaks (0–50 days)': 20,
     'Few breaks (50–150 days)': 100,
-    'Quite a lot (150–300 days)': 225,
-    'Legendary Monk (300+ days)': 450
+    'Quite a lot (150–300 days)': 220,
+    'Legendary Monk (300+ days)': 500
   };
-  const totalBreakDays = noFapDaysMap[data.noFapBreaksRange] || 0;
-  const sessionsPerDayAvg = (avgFreq / 7);
-  const noFapDeduction = totalBreakDays * sessionsPerDayAvg;
+  const totalBreakDays = breakDaysMap[data.noFapBreaksRange] || 0;
+  const avgDailyFreq = ((peakFreq + currentFreq) / 2) / 7;
+  const noFapDeduction = totalBreakDays * avgDailyFreq;
 
-  // 8. Final Sum
-  let total = peakCount + normalCount + multiAdditions + stressImpact - relationshipDeduction - noFapDeduction;
-  const finalCount = Math.max(0, Math.round(total));
+  // Longest streak "discipline reward" (deducts potential sessions from lifetime count)
+  const disciplineReward = data.longestStreak * avgDailyFreq * 1.2;
 
-  // 9. Determine Rank & Meta Data
+  // 7. Final Summation
+  let totalRaw = (peakCount + normalCount + multiAdditions) * stressFactor;
+  totalRaw = totalRaw - relDeduction - noFapDeduction - disciplineReward;
+
+  // Apply Realistic Jitter (2-3%)
+  const jitter = getRealismJitter(data);
+  const finalCount = Math.max(0, Math.round(totalRaw * jitter));
+
+  console.debug("[PapCounter] Calculation Detailed Breakdown:", {
+    totalYears: totalActiveYears.toFixed(2),
+    peakContribution: Math.round(peakCount),
+    normalContribution: Math.round(normalCount),
+    stressFactor,
+    relDeduction: Math.round(relDeduction),
+    noFapDeduction: Math.round(noFapDeduction),
+    finalResult: finalCount
+  });
+
+  // 8. Meta Data & Ranking
   let rank = "";
   let rankBadge = "";
   let rankColor = "";
   let quote = "";
   let comparisonPercent = 0;
 
-  if (finalCount >= 1500) {
-    rank = "Menace to Society";
-    rankBadge = "💀";
-    rankColor = "text-red-500 font-black";
+  if (finalCount >= 2200) {
+    rank = "Danger to Civilisation";
+    rankBadge = "👺";
+    rankColor = "text-red-600 font-black";
     quote = QUOTES_HIGH[Math.floor(Math.random() * QUOTES_HIGH.length)];
-    // Bell curve calculation for comparison: 
-    // 1500 is roughly 80th percentile for the "active" population
-    comparisonPercent = Math.min(99, 80 + Math.floor((finalCount - 1500) / 100));
-  } else if (finalCount >= 800) {
+    comparisonPercent = Math.min(99, 92 + Math.floor((finalCount - 2200) / 200));
+  } else if (finalCount >= 1200) {
     rank = "Elite Grinder";
     rankBadge = "🫡";
-    rankColor = "text-pink-500 font-black";
+    rankColor = "text-pink-600 font-black";
     quote = QUOTES_HIGH[Math.floor(Math.random() * QUOTES_HIGH.length)];
-    comparisonPercent = 60 + Math.floor((finalCount - 800) / 17);
-  } else if (finalCount >= 400) {
-    rank = "Balanced Human";
-    rankBadge = "✅";
+    comparisonPercent = 75 + Math.floor((finalCount - 1200) / 40);
+  } else if (finalCount >= 500) {
+    rank = "Active Soldier";
+    rankBadge = "🪖";
+    rankColor = "text-orange-500 font-black";
+    quote = QUOTES_MID[Math.floor(Math.random() * QUOTES_MID.length)];
+    comparisonPercent = 40 + Math.floor((finalCount - 500) / 10);
+  } else if (finalCount >= 150) {
+    rank = "Casual Explorer";
+    rankBadge = "🎒";
     rankColor = "text-yellow-500 font-black";
     quote = QUOTES_MID[Math.floor(Math.random() * QUOTES_MID.length)];
-    comparisonPercent = 30 + Math.floor((finalCount - 400) / 13);
+    comparisonPercent = 15 + Math.floor((finalCount - 150) / 10);
   } else {
-    rank = "Monk Candidate";
+    rank = "Zen Master";
     rankBadge = "🧘‍♂️";
     rankColor = "text-green-500 font-black";
     quote = QUOTES_LOW[Math.floor(Math.random() * QUOTES_LOW.length)];
-    comparisonPercent = Math.max(1, Math.floor(finalCount / 14));
+    comparisonPercent = Math.max(1, Math.floor(finalCount / 10));
   }
 
-  // 10. Biological Stats
-  const spermPerEjac = 300000000; // 300 Million
+  // 9. Biological & Comparison Stats
+  const spermPerEjac = 280000000; // ~280 Million average
   const totalSperm = finalCount * spermPerEjac;
-  const spermBillions = (totalSperm / 1000000000);
+  const spermBillions = totalSperm / 1000000000;
   const potentialBabiesWasted = spermBillions.toFixed(1) + " BILLION";
 
-  // 11. Consistency Stats
-  const gapDaysValue = currentFreq > 0 ? parseFloat((7 / currentFreq).toFixed(1)) : 7;
+  const gapDaysValue = currentFreq > 0 ? parseFloat((7 / currentFreq).toFixed(1)) : 14;
 
   return {
     lifetimeCount: finalCount,
